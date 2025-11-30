@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import {
   Camera,
@@ -45,11 +46,19 @@ const HeartRateScreen = () => {
 
   const userId = 'demo_user_123';
 
-  const ensureCameraPermission = useCallback(async () => {
-    if (hasPermission) return true;
-    const granted = await requestPermission();
-    return granted;
-  }, [hasPermission, requestPermission]);
+const ensureCameraPermission = useCallback(async () => {
+  const status = await Camera.getCameraPermissionStatus();
+  if (status === 'denied') {
+    // user từng từ chối → gợi ý mở Settings
+    Linking.openSettings();
+    return false;
+  }
+  if (!hasPermission) {
+    return await requestPermission();
+  }
+  return true;
+}, [hasPermission]);
+
 
   const startMeasure = async () => {
     setLoading(true);
@@ -120,13 +129,16 @@ const HeartRateScreen = () => {
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
-    if (isMeasuring) {
+
+    if (isMeasuring && cameraReady) {
       interval = setInterval(captureFrame, 1000);
     }
+
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isMeasuring, captureFrame]);
+  }, [isMeasuring, cameraReady, captureFrame]);
+
 
   if (!device) {
     return (
